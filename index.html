@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="description" content="Throw Nerd Online — Fast, clean browser-based darts scoring for 301, 501, and Cricket." />
+  <title>Throw Nerd Online</title>
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#00e5ff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=JetBrains+Mono:wght@600;700&display=swap" rel="stylesheet" />
+
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- ─── Home Screen ─────────────────────────────────────────────────── -->
+  <section class="screen" id="screen-home">
+    <div class="home-hero">
+      <div class="home-logo">🎯</div>
+      <h1 class="home-title">Throw Nerd</h1>
+      <p class="home-tagline">Online Darts Scorer</p>
+    </div>
+    <div class="home-actions">
+      <button class="btn-primary" id="btn-new">⊕ New Game</button>
+      <button class="btn-secondary" id="btn-resume">▶ Resume Game</button>
+    </div>
+  </section>
+
+  <!-- ─── Setup Screen ────────────────────────────────────────────────── -->
+  <section class="screen" id="screen-setup">
+    <div class="setup-header">
+      <button class="btn-icon" id="btn-setup-back" title="Back">⟵</button>
+      <h2>Match Setup</h2>
+    </div>
+
+    <div class="setup-body">
+
+      <!-- Game Type -->
+      <div class="form-group">
+        <label class="form-label" for="select-game-type">Game Mode</label>
+        <select class="form-select" id="select-game-type">
+          <option value="x01">X01</option>
+          <option value="cricket">Cricket</option>
+        </select>
+      </div>
+
+      <!-- X01 Mode (shown only for x01) -->
+      <div class="form-group" id="x01-mode-section">
+        <label class="form-label" for="select-x01-mode">Starting Score</label>
+        <select class="form-select" id="select-x01-mode">
+          <option value="501">501</option>
+          <option value="301">301</option>
+        </select>
+      </div>
+
+      <!-- Double Out (shown only for x01) -->
+      <div class="form-group" id="double-out-section">
+        <label class="checkbox-row" for="chk-double-out">
+          <input type="checkbox" id="chk-double-out" />
+          <span class="checkbox-label">Double Out</span>
+          <span class="checkbox-hint">Finish on a double</span>
+        </label>
+      </div>
+
+      <!-- Cut-Throat (shown only for cricket) -->
+      <div class="form-group" id="cut-throat-section" style="display:none">
+        <label class="checkbox-row" for="chk-cut-throat">
+          <input type="checkbox" id="chk-cut-throat" />
+          <span class="checkbox-label">Cut-Throat Mode</span>
+          <span class="checkbox-hint">Points go to opponents</span>
+        </label>
+      </div>
+
+      <!-- Legs -->
+      <div class="form-group" id="best-of-section">
+        <label class="form-label" for="select-legs">Best Of (Legs)</label>
+        <select class="form-select" id="select-legs">
+          <option value="1">1 Leg</option>
+          <option value="3">Best of 3</option>
+          <option value="5">Best of 5</option>
+          <option value="7">Best of 7</option>
+        </select>
+      </div>
+
+      <!-- Players -->
+      <div class="form-group">
+        <label class="form-label">Players</label>
+        <div class="player-list" id="player-list"></div>
+        <button id="btn-add-player">+ Add Player</button>
+      </div>
+
+      <!-- Start -->
+      <button class="btn-primary setup-start-btn" id="btn-start">▶ Start Match</button>
+    </div>
+  </section>
+
+  <!-- ─── Game Screen ──────────────────────────────────────────────────── -->
+  <section class="screen" id="screen-game">
+    <!-- Dynamically rendered by app.js -->
+  </section>
+
+  <!-- ─── Scripts ─────────────────────────────────────────────────────── -->
+  <script src="js/models.js"></script>
+  <script src="js/x01Engine.js"></script>
+  <script src="js/cricketEngine.js"></script>
+  <script src="js/app.js"></script>
+
+  <!-- PWA Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
