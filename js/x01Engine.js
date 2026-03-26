@@ -1,5 +1,5 @@
-// x01Engine.js — X01 scoring engine ported from throw-nerd (Dart → JS)
-// Source: https://github.com/mattcallaway/throw-nerd (commit 776c086)
+// x01Engine.js — X01 scoring engine, dart-by-dart
+// Ported from throw-nerd (Dart → JS), commit 776c086
 
 'use strict';
 
@@ -22,43 +22,72 @@ class X01Engine {
             playerStates,
             playerOrder: players.map(p => p.id),
             currentPlayerIndex: 0,
-            history: [],
+            history: [], // array of { playerId, darts[], scoredTotal, busted, remainingBefore, remainingAfter }
             config,
             winnerId: null,
-            bust: false,
+            lastBusted: false,
             startScore,
         };
     }
 
-    // Apply a turn given a raw score (3-dart total as a number)
-    applyScore(state, playerId, rawScore) {
+    // Apply a full turn (array of Dart objects, max 3)
+    applyTurn(state, playerId, darts) {
         if (state.winnerId) return state;
 
         const pState = state.playerStates[playerId];
-        const current = pState.remaining;
+        const remainingBefore = pState.remaining;
 
-        let newRemaining = current - rawScore;
+        let tempRemaining = remainingBefore;
         let busted = false;
         let won = false;
+        let scoredTotal = 0;
 
-        if (newRemaining < 0) {
-            busted = true;
-        } else if (newRemaining === 0) {
-            // Check out condition — for simplicity we trust double-out UI
-            // The engine allows the win; UI should gate on double-out if needed
-            won = true;
-        } else if (newRemaining === 1 && (state.config.doubleOut || state.config.masterOut)) {
-            // Can't leave 1 when double-out is required
-            busted = true;
+        for (const dart of darts) {
+            if (dart.isMiss) continue;
+
+            const val = dart.total;
+            tempRemaining -= val;
+            scoredTotal += val;
+
+            if (tempRemaining < 0) {
+                busted = true;
+                break;
+            }
+
+            if (tempRemaining === 0) {
+                // Check out condition
+                const needsDouble = state.config.doubleOut;
+                const needsMaster = state.config.masterOut;
+                if (needsDouble && !dart.isDouble) { busted = true; break; }
+                if (needsMaster && !(dart.isDouble || dart.isTriple)) { busted = true; break; }
+                won = true;
+                break;
+            }
+
+            if (tempRemaining === 1 && (state.config.doubleOut || state.config.masterOut)) {
+                // Can't leave 1 when finishing on double/master required
+                busted = true;
+                break;
+            }
         }
 
-        const finalRemaining = busted ? current : newRemaining;
+        const remainingAfter = busted ? remainingBefore : tempRemaining;
 
-        const newPlayerStates = { ...state.playerStates };
-        newPlayerStates[playerId] = new X01PlayerState(finalRemaining);
+        const newPlayerStates = {};
+        for (const [pid, ps] of Object.entries(state.playerStates)) {
+            newPlayerStates[pid] = new X01PlayerState(ps.remaining);
+        }
+        newPlayerStates[playerId] = new X01PlayerState(remainingAfter);
 
-        const turn = new Turn(playerId, [new Dart(rawScore, 1)]); // simplified: store as single "dart"
-        const newHistory = [...state.history, { playerId, score: rawScore, busted, remaining: finalRemaining }];
+        const histEntry = {
+            playerId,
+            darts: darts.map(d => d.toJSON()),
+            scoredTotal: busted ? 0 : scoredTotal,
+            busted,
+            remainingBefore,
+            remainingAfter,
+        };
+        const newHistory = [...state.history, histEntry];
 
         let nextIndex = state.currentPlayerIndex;
         if (!won) {
@@ -71,9 +100,7 @@ class X01Engine {
             currentPlayerIndex: nextIndex,
             history: newHistory,
             winnerId: won ? playerId : null,
-            bust: busted,
-            lastScore: rawScore,
-            lastPlayerId: playerId,
+            lastBusted: busted,
         };
     }
 
@@ -83,21 +110,14 @@ class X01Engine {
         const history = [...state.history];
         const last = history.pop();
 
-        // Restore score
         const newPlayerStates = {};
         for (const [pid, ps] of Object.entries(state.playerStates)) {
             newPlayerStates[pid] = new X01PlayerState(ps.remaining);
         }
+        // Restore the score before this turn
+        newPlayerStates[last.playerId] = new X01PlayerState(last.remainingBefore);
 
-        // Revert: add back the score that was subtracted (or 0 if busted)
-        if (!last.busted) {
-            newPlayerStates[last.playerId] = new X01PlayerState(last.remaining + last.score);
-        }
-        // If busted, the score didn't change — but we still pop history and go back
-
-        // Walk back player index
-        const numPlayers = state.playerOrder.length;
-        let prevIndex = state.playerOrder.indexOf(last.playerId);
+        const prevIndex = state.playerOrder.indexOf(last.playerId);
 
         return {
             ...state,
@@ -105,9 +125,37 @@ class X01Engine {
             currentPlayerIndex: prevIndex,
             history,
             winnerId: null,
-            bust: false,
-            lastScore: null,
-            lastPlayerId: null,
+            lastBusted: false,
+        };
+    }
+
+    // Preview: compute remaining if these darts are thrown from given remaining
+    previewTurn(remaining, darts, config) {
+        let temp = remaining;
+        let busted = false;
+        let scoredTotal = 0;
+
+        for (const dart of darts) {
+            if (dart.isMiss) continue;
+            const val = dart.total;
+            temp -= val;
+            scoredTotal += val;
+
+            if (temp < 0) { busted = true; break; }
+            if (temp === 0) {
+                const needsDouble = config.doubleOut;
+                const needsMaster = config.masterOut;
+                if (needsDouble && !dart.isDouble) { busted = true; break; }
+                if (needsMaster && !(dart.isDouble || dart.isTriple)) { busted = true; break; }
+                break;
+            }
+            if (temp === 1 && (config.doubleOut || config.masterOut)) { busted = true; break; }
+        }
+
+        return {
+            remaining: busted ? remaining : temp,
+            scored: busted ? 0 : scoredTotal,
+            busted,
         };
     }
 
